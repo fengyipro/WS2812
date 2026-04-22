@@ -99,11 +99,14 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		HAL_UART_Transmit(&huart3, (uint8_t*)"test", 4, 100);
+		HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }
