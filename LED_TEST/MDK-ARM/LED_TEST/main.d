@@ -27,6 +27,7 @@ led_test\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_adc_ex.h
 led_test\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash.h
 led_test\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h
 led_test\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
+led_test\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h
 led_test\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 led_test\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
 led_test\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
@@ -35,3 +36,9 @@ led_test\main.o: ../Core/Inc/dma.h
 led_test\main.o: ../Core/Inc/tim.h
 led_test\main.o: ../Core/Inc/usart.h
 led_test\main.o: ../Core/Inc/gpio.h
+led_test\main.o: ../Core/Inc/lcd.h
+led_test\main.o: ../Core/Inc/ws2812.h
+led_test\main.o: ../Core/Inc/micphone.h
+led_test\main.o: ../Core/Inc/buzzer.h
+led_test\main.o: ../Core/Inc/light.h
+led_test\main.o: D:\keilv5\ARM\ARMCC\Bin\..\include\stdio.h

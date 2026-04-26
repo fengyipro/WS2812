@@ -26,6 +26,7 @@ led_test\stm32f1xx_hal_tim_ex.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_h
 led_test\stm32f1xx_hal_tim_ex.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash.h
 led_test\stm32f1xx_hal_tim_ex.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h
 led_test\stm32f1xx_hal_tim_ex.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
+led_test\stm32f1xx_hal_tim_ex.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h
 led_test\stm32f1xx_hal_tim_ex.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 led_test\stm32f1xx_hal_tim_ex.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
 led_test\stm32f1xx_hal_tim_ex.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h

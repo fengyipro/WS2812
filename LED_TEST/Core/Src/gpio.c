@@ -50,19 +50,16 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_1|LED1_Pin|GPIO_PIN_5
-                          |GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LCD_RST_Pin|LCD_DC_Pin|LED1_Pin|LCD_SCLK_Pin|LCD_MOSI_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12|GPIO_PIN_8|GPIO_PIN_9, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12|LCD_CS_Pin|LCD_BLK_Pin, GPIO_PIN_SET); // PB12 (Buzzer) 初始设为高电平以关闭
 
-  /*Configure GPIO pins : PA0 PA1 LED1_Pin PA5
-                           PA7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|LED1_Pin|GPIO_PIN_5
-                          |GPIO_PIN_7;
+  /*Configure GPIO pins : PAPin PAPin LED1_Pin PAPin PAPin */
+  GPIO_InitStruct.Pin = LCD_RST_Pin|LCD_DC_Pin|LED1_Pin|LCD_SCLK_Pin|LCD_MOSI_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB0 */
@@ -71,11 +68,11 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB12 PB8 PB9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_8|GPIO_PIN_9;
+  /*Configure GPIO pins : PB12 LCD_CS_Pin LCD_BLK_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_12|LCD_CS_Pin|LCD_BLK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : KEY_1_Pin KEY_2_Pin */
