@@ -48,7 +48,7 @@ typedef enum {
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define LED_NUM 10 // 有10个LED，驱动库是兼容的
+#define LED_NUM 64 // 有10个LED，驱动库是兼容的
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
