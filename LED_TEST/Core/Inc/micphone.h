@@ -21,4 +21,10 @@ uint32_t Micphone_GetValue(void);
  */
 uint32_t Micphone_GetAverage(uint16_t samples);
 
+/**
+ * @brief 获取0~255的自适应声音活动强度
+ * @note  内部会动态跟踪环境噪声底，兼顾灵敏度和抗噪能力
+ */
+uint8_t Micphone_GetActivityLevel(void);
+
 #endif /* __MICPHONE_H */
