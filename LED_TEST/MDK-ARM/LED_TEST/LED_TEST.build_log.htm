@@ -22,12 +22,35 @@ Dialog DLL:      TCM.DLL V1.32.0.0
  
 <h2>Project:</h2>
 D:\文件集合\电赛校内赛项目\LED_TEST\MDK-ARM\LED_TEST.uvprojx
-Project File Date:  04/25/2026
+Project File Date:  04/28/2026
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 5 (build 528)', folder: 'D:\keilv5\ARM\ARMCC\Bin'
 Build target 'LED_TEST'
-"LED_TEST\LED_TEST.axf" - 0 Error(s), 0 Warning(s).
+compiling main.c...
+../Core/Inc/lcd.h(93): warning:  #1-D: last line of file ends without a newline
+  #endif
+../Core/Inc/buzzer.h(25): warning:  #1-D: last line of file ends without a newline
+  #endif /* __BUZZER_H */
+../Core/Src/main.c(249): warning:  #546-D: transfer of control bypasses initialization of:
+            variable "val"  (declared at line 259)
+          switch (current_menu) {
+          ^
+../Core/Src/main.c(294): warning:  #546-D: transfer of control bypasses initialization of:
+            variable "val_dec"  (declared at line 303)
+          switch (current_menu) {
+          ^
+../Core/Src/main.c(352): warning:  #546-D: transfer of control bypasses initialization of:
+            variable "level_str"  (declared at line 366)
+            variable "bar_end"  (declared at line 372)
+            variable "color_names"  (declared at line 398)
+      switch (current_menu) {
+      ^
+../Core/Src/main.c: 5 warnings, 0 errors
+linking...
+Program Size: Code=14504 RO-data=14304 RW-data=84 ZI-data=5156  
+FromELF: creating hex file...
+"LED_TEST\LED_TEST.axf" - 0 Error(s), 5 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -50,7 +73,7 @@ Package Vendor: Keil
 <h2>Collection of Component Files used:</h2>
 
    * Component: ARM::CMSIS:CORE:5.0.1
-Build Time Elapsed:  00:00:00
+Build Time Elapsed:  00:00:01
 </pre>
 </body>
 </html>
