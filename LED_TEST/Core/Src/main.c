@@ -32,6 +32,7 @@
 #include "buzzer.h"
 #include "light.h"
 #include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,6 +40,7 @@
 typedef enum {
     MENU_HOME,
     MENU_BRIGHTNESS,
+    MENU_VOICE,
     MENU_EXTENDED,
     MENU_COLOR,
     MENU_MUSIC,
@@ -49,7 +51,7 @@ typedef enum {
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define LED_NUM 64 // 有10个LED，驱动库是兼容的
+#define LED_NUM LED_MAX_COUNT // 统一使用驱动层定义，避免数量不一致
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -66,17 +68,23 @@ volatile uint8_t key2_pressed = 0;
 
 uint8_t brightness_level = 2; // 1:Dark, 2:Medium, 3:Bright
 uint8_t color_index = 0;
+uint8_t home_menu_cursor = 0; // 0:Brightness, 1:Extended, 2:Voice
 uint8_t extended_menu_cursor = 0; // 0:Color, 1:Music, 2:Auto Brightness, 3:Sound Detect
-RGB_Color_t colors[] = {
-    {255, 0, 0},   // Red
-    {0, 255, 0},   // Green
-    {0, 0, 255},   // Blue
-    {255, 255, 0}, // Yellow
-    {255, 0, 255}, // Purple
-    {0, 255, 255}, // Cyan
-    {255, 255, 255} // White
+typedef struct {
+    RGB_Color_t rgb;
+    const char *name;
+} ColorMode_t;
+
+ColorMode_t color_modes[] = {
+    {{255, 0, 0}, "RED"},
+    {{0, 255, 0}, "GREEN"},
+    {{0, 0, 255}, "BLUE"},
+    {{255, 255, 0}, "YELLOW"},
+    {{255, 0, 255}, "PURPLE"},
+    {{0, 255, 255}, "CYAN"},
+    {{255, 255, 255}, "WHITE"}
 };
-#define COLOR_COUNT (sizeof(colors)/sizeof(colors[0]))
+#define COLOR_COUNT (sizeof(color_modes)/sizeof(color_modes[0]))
 
 uint32_t last_key_time = 0;
 
@@ -88,6 +96,18 @@ uint16_t music_hue = 0;        // 当前色相 (0-1535，表示完整色环)
 uint8_t music_saturation = 255; // 饱和度
 uint8_t music_value = 0;       // 亮度
 uint8_t music_cal_initialized = 0; // 音乐模式校准是否已初始化
+
+// 语音模式接收缓冲与状态
+uint8_t voice_rx_byte = 0;
+char voice_cmd_buf[40];
+uint8_t voice_cmd_idx = 0;
+char voice_rx_debug[24] = "";
+uint8_t voice_rx_debug_idx = 0;
+uint8_t voice_rx_debug_updated = 0;
+uint32_t voice_led_last_toggle = 0;
+uint8_t voice_led_blink_state = 0;
+uint32_t voice_led_hold_until = 0;
+char voice_last_cmd[24] = "None";
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,12 +118,19 @@ void Handle_Keys(void);
 void Music_Rhythm_Update(void);
 void Auto_Brightness_Update(void);
 void Sound_Detect_Update(void);
+void Voice_Mode_Update(void);
+void Voice_Process_Command(const char *cmd);
+void Voice_LED_Set(uint8_t on);
 void HSV_to_RGB(uint16_t h, uint8_t s, uint8_t v, uint8_t *r, uint8_t *g, uint8_t *b);
 void Matrix_Set_Pixel(uint8_t row, uint8_t col, uint8_t r, uint8_t g, uint8_t b);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void Voice_LED_Set(uint8_t on) {
+    // 语音识别LED: 低电平点亮, 高电平熄灭
+    HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, on ? GPIO_PIN_RESET : GPIO_PIN_SET);
+}
 
 /* USER CODE END 0 */
 
@@ -148,6 +175,7 @@ int main(void)
   Micphone_Init();
   Buzzer_Init();
   Light_Init();
+  Voice_LED_Set(0);
   
   UI_Refresh(); // 显示初始界面
   /* USER CODE END 2 */
@@ -164,6 +192,8 @@ int main(void)
         Auto_Brightness_Update();
     } else if (current_menu == MENU_SOUND_DETECT) {
         Sound_Detect_Update();
+    } else if (current_menu == MENU_VOICE) {
+        Voice_Mode_Update();
     }
     
     HAL_Delay(10); // 适当延时，减轻CPU负担
@@ -243,12 +273,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
  * @brief 处理按键逻辑处理与状态跳转
  */
 void Handle_Keys(void) {
+    uint8_t val;
+
     if (key1_pressed) {
         key1_pressed = 0;
         Buzzer_Beep_Short(); // 在主循环中安全调用
         switch (current_menu) {
             case MENU_HOME:
-                current_menu = MENU_BRIGHTNESS;
+                // 主界面: K1用于选择
+                home_menu_cursor = (home_menu_cursor + 1) % 3;
                 UI_Refresh();
                 break;
             case MENU_BRIGHTNESS:
@@ -256,7 +289,7 @@ void Handle_Keys(void) {
                 else brightness_level = 1; // 循环切换
                 UI_Refresh();
                 // 调节WS2812亮度
-                uint8_t val = (brightness_level == 1) ? 30 : (brightness_level == 2 ? 120 : 255);
+                val = (brightness_level == 1) ? 30 : (brightness_level == 2 ? 120 : 255);
                 WS2812_Set_All(LED_NUM, val, val, val);
                 break;
             case MENU_EXTENDED:
@@ -266,7 +299,10 @@ void Handle_Keys(void) {
                 break;
             case MENU_COLOR:
                 color_index = (color_index + 1) % COLOR_COUNT;
-                WS2812_Set_All(LED_NUM, colors[color_index].R, colors[color_index].G, colors[color_index].B);
+                WS2812_Set_All(LED_NUM,
+                               color_modes[color_index].rgb.R,
+                               color_modes[color_index].rgb.G,
+                               color_modes[color_index].rgb.B);
                 UI_Refresh();
                 break;
             case MENU_MUSIC:
@@ -285,6 +321,15 @@ void Handle_Keys(void) {
                 WS2812_Clear(LED_NUM);
                 UI_Refresh();
                 break;
+            case MENU_VOICE:
+                // 语音模式下按键1返回主菜单
+                current_menu = MENU_HOME;
+                voice_cmd_idx = 0;
+                voice_led_hold_until = 0;
+                voice_led_blink_state = 0;
+                Voice_LED_Set(0);
+                UI_Refresh();
+                break;
         }
     }
     
@@ -293,22 +338,37 @@ void Handle_Keys(void) {
         Buzzer_Beep_Short(); // 在主循环中安全调用
         switch (current_menu) {
             case MENU_HOME:
-                current_menu = MENU_EXTENDED;
+                // 主界面: K2确认进入
+                if (home_menu_cursor == 0) {
+                    current_menu = MENU_BRIGHTNESS;
+                } else if (home_menu_cursor == 1) {
+                    current_menu = MENU_EXTENDED;
+                } else {
+                    current_menu = MENU_VOICE;
+                    voice_cmd_idx = 0;
+                    voice_led_hold_until = 0;
+                    voice_led_last_toggle = HAL_GetTick();
+                    voice_led_blink_state = 1;
+                    Voice_LED_Set(1);
+                }
                 UI_Refresh();
                 break;
             case MENU_BRIGHTNESS:
                 if (brightness_level > 1) brightness_level--;
                 else brightness_level = 3; // 循环切换
                 UI_Refresh();
-                uint8_t val_dec = (brightness_level == 1) ? 30 : (brightness_level == 2 ? 120 : 255);
-                WS2812_Set_All(LED_NUM, val_dec, val_dec, val_dec);
+                val = (brightness_level == 1) ? 30 : (brightness_level == 2 ? 120 : 255);
+                WS2812_Set_All(LED_NUM, val, val, val);
                 break;
             case MENU_EXTENDED:
                 // K2 确认进入模式
                 if (extended_menu_cursor == 0) {
                     current_menu = MENU_COLOR;
                     // 进入颜色模式时，立即设置LED为当前颜色
-                    WS2812_Set_All(LED_NUM, colors[color_index].R, colors[color_index].G, colors[color_index].B);
+                    WS2812_Set_All(LED_NUM,
+                                   color_modes[color_index].rgb.R,
+                                   color_modes[color_index].rgb.G,
+                                   color_modes[color_index].rgb.B);
                 } else if (extended_menu_cursor == 1) {
                     current_menu = MENU_MUSIC;
                 } else if (extended_menu_cursor == 2) {
@@ -335,6 +395,14 @@ void Handle_Keys(void) {
                 WS2812_Clear(LED_NUM);
                 UI_Refresh();
                 break;
+            case MENU_VOICE:
+                current_menu = MENU_HOME;
+                voice_cmd_idx = 0;
+                voice_led_hold_until = 0;
+                voice_led_blink_state = 0;
+                Voice_LED_Set(0);
+                UI_Refresh();
+                break;
         }
     }
 }
@@ -344,6 +412,8 @@ void Handle_Keys(void) {
  */
 void UI_Refresh(void) {
     char buf[32];
+    const char* level_str;
+    uint8_t bar_end;
     LCD_Clear(BLACK);
     
     // 绘制顶部标题栏 (简约设计)
@@ -352,24 +422,25 @@ void UI_Refresh(void) {
     switch (current_menu) {
         case MENU_HOME:
             LCD_ShowString(32, 2, (u8*)"MAIN MENU", WHITE, BLUE, 16, 0);
-            
-            LCD_ShowString(10, 45, (u8*)"1. Brightness", WHITE, BLACK, 16, 0);
-            LCD_ShowString(10, 75, (u8*)"2. Extended", WHITE, BLACK, 16, 0);
-            
+
+            LCD_ShowString(8, 36, (u8*)"1. Brightness", (home_menu_cursor == 0) ? CYAN : WHITE, BLACK, 16, 0);
+            LCD_ShowString(8, 58, (u8*)"2. Extended", (home_menu_cursor == 1) ? CYAN : WHITE, BLACK, 16, 0);
+            LCD_ShowString(8, 80, (u8*)"3. Voice Ctrl", (home_menu_cursor == 2) ? CYAN : WHITE, BLACK, 16, 0);
+
             LCD_DrawLine(0, 105, 127, 105, GRAY);
-            LCD_ShowString(15, 110, (u8*)"K1:Enter K2:Next", GRAY, BLACK, 12, 0);
+            LCD_ShowString(10, 110, (u8*)"K1:Sel  K2:Enter", GRAY, BLACK, 12, 0);
             break;
             
         case MENU_BRIGHTNESS:
             LCD_ShowString(24, 2, (u8*)"BRIGHTNESS", WHITE, BLUE, 16, 0);
             
-            const char* level_str = (brightness_level == 1) ? "DARK" : (brightness_level == 2 ? "MEDIUM" : "BRIGHT");
+            level_str = (brightness_level == 1) ? "DARK" : (brightness_level == 2 ? "MEDIUM" : "BRIGHT");
             sprintf(buf, "Level: %s", level_str);
             LCD_ShowString(20, 50, (u8*)buf, WHITE, BLACK, 16, 0);
             
             // 简单的进度条
             LCD_DrawLine(20, 80, 108, 80, WHITE);
-            uint8_t bar_end = 20 + (brightness_level * 29);
+            bar_end = 20 + (brightness_level * 29);
             LCD_Fill(20, 77, bar_end, 83, CYAN);
             
             LCD_DrawLine(0, 105, 127, 105, GRAY);
@@ -395,8 +466,7 @@ void UI_Refresh(void) {
             LCD_ShowString(30, 50, (u8*)buf, WHITE, BLACK, 16, 0);
             
             // 显示颜色名称
-            const char* color_names[] = {"RED", "GREEN", "BLUE", "YELLOW", "PURPLE", "CYAN", "WHITE"};
-            sprintf(buf, "Color: %s", color_names[color_index]);
+            sprintf(buf, "Color: %s", color_modes[color_index].name);
             LCD_ShowString(20, 80, (u8*)buf, CYAN, BLACK, 16, 0);
             
             LCD_DrawLine(0, 105, 127, 105, GRAY);
@@ -421,7 +491,134 @@ void UI_Refresh(void) {
             LCD_ShowString(10, 2, (u8*)"SOUND DETECT", WHITE, BLUE, 16, 0);
             // 实时显示由Sound_Detect_Update动态更新
             break;
+        case MENU_VOICE:
+            LCD_ShowString(12, 2, (u8*)"VOICE MODE", WHITE, BLUE, 16, 0);
+            LCD_ShowString(6, 30, (u8*)"Say pinyin cmd:", WHITE, BLACK, 12, 0);
+            LCD_ShowString(6, 46, (u8*)"RX:", CYAN, BLACK, 12, 0);
+            LCD_ShowString(28, 46, (u8*)voice_rx_debug, WHITE, BLACK, 12, 0);
+            LCD_ShowString(6, 68, (u8*)"Last:", CYAN, BLACK, 12, 0);
+            LCD_ShowString(42, 68, (u8*)voice_last_cmd, WHITE, BLACK, 12, 0);
+            LCD_DrawLine(0, 105, 127, 105, GRAY);
+            LCD_ShowString(12, 110, (u8*)"K1/K2: Back", GRAY, BLACK, 12, 0);
+            break;
     }
+}
+
+/**
+ * @brief 语音模式更新（串口轮询接收 + LED状态）
+ */
+void Voice_Mode_Update(void) {
+    uint32_t now = HAL_GetTick();
+    uint8_t i;
+    char rx_view[16];
+    uint8_t tail_len;
+    uint8_t start_idx;
+
+    // 轮询接收LD3320发来的拼音命令文本（\r\n结尾）
+    while (HAL_UART_Receive(&huart2, &voice_rx_byte, 1, 0) == HAL_OK) {
+        if (voice_rx_byte == '\r') {
+            continue;
+        }
+        if (voice_rx_byte == '\n') {
+            if (voice_cmd_idx > 0) {
+                voice_cmd_buf[voice_cmd_idx] = '\0';
+                Voice_Process_Command(voice_cmd_buf);
+                voice_cmd_idx = 0;
+            }
+            // 显示换行到达，便于确认帧结束
+            if (voice_rx_debug_idx < (sizeof(voice_rx_debug) - 1U)) {
+                voice_rx_debug[voice_rx_debug_idx++] = '|';
+            }
+            voice_rx_debug[voice_rx_debug_idx] = '\0';
+            voice_rx_debug_updated = 1;
+            continue;
+        }
+
+        if (voice_cmd_idx < (sizeof(voice_cmd_buf) - 1U)) {
+            voice_cmd_buf[voice_cmd_idx++] = (char)voice_rx_byte;
+        } else {
+            voice_cmd_idx = 0;
+        }
+
+        // 原始串口数据显示（仅保留可打印ASCII）
+        if (voice_rx_debug_idx >= (sizeof(voice_rx_debug) - 1U)) {
+            for (i = 1; i < voice_rx_debug_idx; i++) {
+                voice_rx_debug[i - 1] = voice_rx_debug[i];
+            }
+            voice_rx_debug_idx--;
+        }
+        if (voice_rx_byte >= 32U && voice_rx_byte <= 126U) {
+            voice_rx_debug[voice_rx_debug_idx++] = (char)voice_rx_byte;
+        } else {
+            voice_rx_debug[voice_rx_debug_idx++] = '.';
+        }
+        voice_rx_debug[voice_rx_debug_idx] = '\0';
+        voice_rx_debug_updated = 1;
+    }
+
+    if (voice_rx_debug_updated) {
+        voice_rx_debug_updated = 0;
+        tail_len = (uint8_t)strlen(voice_rx_debug);
+        if (tail_len > 14U) {
+            start_idx = (uint8_t)(tail_len - 14U);
+            for (i = 0; i < 14U; i++) {
+                rx_view[i] = voice_rx_debug[start_idx + i];
+            }
+            rx_view[14] = '\0';
+        } else {
+            for (i = 0; i < tail_len; i++) {
+                rx_view[i] = voice_rx_debug[i];
+            }
+            for (; i < 14U; i++) {
+                rx_view[i] = ' ';
+            }
+            rx_view[14] = '\0';
+        }
+
+        LCD_Fill(28, 46, 127, 58, BLACK);
+        LCD_ShowString(28, 46, (u8*)rx_view, WHITE, BLACK, 12, 0);
+    }
+
+    // LED指示：命令执行后长亮2s，否则闪烁
+    if (now < voice_led_hold_until) {
+        Voice_LED_Set(1);
+    } else if (now - voice_led_last_toggle >= 300U) {
+        voice_led_last_toggle = now;
+        voice_led_blink_state = !voice_led_blink_state;
+        Voice_LED_Set(voice_led_blink_state);
+    }
+}
+
+/**
+ * @brief 执行语音命令
+ */
+void Voice_Process_Command(const char *cmd) {
+    if (strcmp(cmd, "1") == 0) {
+        WS2812_Set_All(LED_NUM, 255, 255, 255);
+        strcpy(voice_last_cmd, "1:open");
+    } else if (strcmp(cmd, "2") == 0) {
+        WS2812_Clear(LED_NUM);
+        strcpy(voice_last_cmd, "2:close");
+    } else if (strcmp(cmd, "3") == 0) {
+        WS2812_Set_All(LED_NUM, 255, 0, 0);
+        strcpy(voice_last_cmd, "3:red");
+    } else if (strcmp(cmd, "4") == 0) {
+        WS2812_Set_All(LED_NUM, 0, 0, 255);
+        strcpy(voice_last_cmd, "4:blue");
+    } else if (strcmp(cmd, "5") == 0) {
+        WS2812_Set_All(LED_NUM, 255, 255, 255);
+        strcpy(voice_last_cmd, "5:white");
+    } else {
+        return;
+    }
+
+    // 命令执行时，语音LED长亮2秒
+    voice_led_hold_until = HAL_GetTick() + 2000U;
+    Voice_LED_Set(1);
+
+    // 局部刷新命令显示区域，避免整屏闪烁
+    LCD_Fill(42, 68, 127, 80, BLACK);
+    LCD_ShowString(42, 68, (u8*)voice_last_cmd, WHITE, BLACK, 12, 0);
 }
 
 /**

@@ -1,4 +1,4 @@
-C51 COMPILER V9.54   USART                                                                 05/03/2026 17:02:41 PAGE 1   
+C51 COMPILER V9.54   USART                                                                 05/04/2026 14:16:53 PAGE 1   
 
 
 C51 COMPILER V9.54, COMPILATION OF MODULE USART
@@ -62,7 +62,7 @@ line level    source
   52   2        } 
   53   1      }
   54          void UART_Send_String(uint8_t *DAT,int16_t len)
-C51 COMPILER V9.54   USART                                                                 05/03/2026 17:02:41 PAGE 2   
+C51 COMPILER V9.54   USART                                                                 05/04/2026 14:16:53 PAGE 2   
 
   55          {
   56   1        int16_t i=0;
