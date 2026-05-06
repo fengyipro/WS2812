@@ -15,8 +15,8 @@ void Light_Init(void) {
 uint8_t Light_IsBright(void) {
     // 光敏模块通常：光照强时 DO 输出低电平(0)，光照弱时输出高电平(1)
     if (HAL_GPIO_ReadPin(LIGHT_PORT, LIGHT_PIN) == GPIO_PIN_RESET) {
-        return 1; // 环境明亮
+        return 0; // 环境明亮
     } else {
-        return 0; // 环境暗
+        return 1; // 环境暗
     }
 }

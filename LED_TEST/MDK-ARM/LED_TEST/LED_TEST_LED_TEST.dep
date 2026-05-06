@@ -1,6 +1,6 @@
 Dependencies for Project 'LED_TEST', Target 'LED_TEST': (DO NOT MODIFY !)
 F (startup_stm32f103xb.s)(0x69EC87EB)(--cpu Cortex-M3 -g --apcs=interwork -I.\RTE\_LED_TEST-ID:\keilv5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-ID:\keilv5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include--pd "__UVISION_VERSION SETA 524" --pd "_RTE_ SETA 1" --pd "STM32F10X_MD SETA 1"--list startup_stm32f103xb.lst --xref -o led_test\startup_stm32f103xb.o --depend led_test\startup_stm32f103xb.d)
-F (../Core/Src/main.c)(0x69F83BA6)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_LED_TEST-ID:\keilv5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-ID:\keilv5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o led_test\main.o --omf_browse led_test\main.crf --depend led_test\main.d)
+F (../Core/Src/main.c)(0x69F83E3B)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_LED_TEST-ID:\keilv5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-ID:\keilv5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o led_test\main.o --omf_browse led_test\main.crf --depend led_test\main.d)
 I (../Core/Inc/main.h)(0x69F838CB)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x69E7444F)
 I (../Core/Inc/stm32f1xx_hal_conf.h)(0x69EC87E9)
@@ -176,7 +176,7 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h)(0x69E7444F)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h)(0x69E7444F)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h)(0x69E7444F)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h)(0x69E7444F)
-F (../Core/Src/tim.c)(0x69F83C93)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_LED_TEST-ID:\keilv5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-ID:\keilv5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o led_test\tim.o --omf_browse led_test\tim.crf --depend led_test\tim.d)
+F (../Core/Src/tim.c)(0x69F83E3B)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_LED_TEST-ID:\keilv5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-ID:\keilv5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o led_test\tim.o --omf_browse led_test\tim.crf --depend led_test\tim.d)
 I (../Core/Inc/tim.h)(0x69E74453)
 I (../Core/Inc/main.h)(0x69F838CB)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x69E7444F)
@@ -407,7 +407,7 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h)(0x69E7444F)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h)(0x69E7444F)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h)(0x69E7444F)
 I (../Core/Inc/adc.h)(0x69EC8753)
-F (../Core/Src/ws2812.c)(0x69F83C9F)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_LED_TEST-ID:\keilv5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-ID:\keilv5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o led_test\ws2812.o --omf_browse led_test\ws2812.crf --depend led_test\ws2812.d)
+F (../Core/Src/ws2812.c)(0x69F83E3B)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_LED_TEST-ID:\keilv5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-ID:\keilv5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o led_test\ws2812.o --omf_browse led_test\ws2812.crf --depend led_test\ws2812.d)
 I (../Core/Inc/ws2812.h)(0x69F838CA)
 I (../Core/Inc/main.h)(0x69F838CB)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x69E7444F)
@@ -442,7 +442,7 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h)(0x69E7444F)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h)(0x69E7444F)
 I (../Core/Inc/tim.h)(0x69E74453)
 I (D:\keilv5\ARM\ARMCC\include\string.h)(0x588B8344)
-F (../Core/Src/light.c)(0x69F838CA)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_LED_TEST-ID:\keilv5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-ID:\keilv5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o led_test\light.o --omf_browse led_test\light.crf --depend led_test\light.d)
+F (../Core/Src/light.c)(0x69F83E99)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include-I.\RTE\_LED_TEST-ID:\keilv5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-ID:\keilv5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o led_test\light.o --omf_browse led_test\light.crf --depend led_test\light.d)
 I (../Core/Inc/light.h)(0x69F838CA)
 I (../Core/Inc/main.h)(0x69F838CB)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x69E7444F)
