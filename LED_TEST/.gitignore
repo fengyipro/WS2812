@@ -1,0 +1,11 @@
+# Build outputs
+MDK-ARM/LED_TEST/*
+!MDK-ARM/LED_TEST/LED_TEST.sct
+
+# Keil user/session files
+MDK-ARM/*.uvguix*
+MDK-ARM/*.uvoptx
+
+# Generic temporary files
+*.tmp
+*.log
