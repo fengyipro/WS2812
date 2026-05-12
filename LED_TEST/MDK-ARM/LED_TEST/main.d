@@ -41,5 +41,6 @@ led_test\main.o: ../Core/Inc/ws2812.h
 led_test\main.o: ../Core/Inc/micphone.h
 led_test\main.o: ../Core/Inc/buzzer.h
 led_test\main.o: ../Core/Inc/light.h
+led_test\main.o: ../Core/Inc/bluetooth.h
 led_test\main.o: D:\keilv5\ARM\ARMCC\Bin\..\include\stdio.h
 led_test\main.o: D:\keilv5\ARM\ARMCC\Bin\..\include\string.h

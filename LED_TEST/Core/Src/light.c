@@ -1,22 +1,32 @@
 #include "light.h"
 
-/**
- * @brief 光敏传感器初始化
- *        已经在 gpio.c 的 MX_GPIO_Init() 中完成输入上拉配置
- */
 void Light_Init(void) {
-    // 留空，CubeMX已配置 PB0 为输入
 }
 
-/**
- * @brief 检测环境是否明亮
- * @return 1:明亮, 0:暗
- */
-uint8_t Light_IsBright(void) {
-    // 光敏模块通常：光照强时 DO 输出低电平(1)，光照弱时输出高电平(0)
-    if (HAL_GPIO_ReadPin(LIGHT_PORT, LIGHT_PIN) == GPIO_PIN_RESET) {
-        return 0; // 环境暗
-    } else {
-        return 1; // 环境明亮
+static void Light_SelectChannel(void) {
+    ADC_ChannelConfTypeDef sConfig = {0};
+    sConfig.Channel = LIGHT_ADC_CHANNEL;
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_41CYCLES_5;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+}
+
+uint32_t Light_GetValue(void) {
+    Light_SelectChannel();
+    HAL_ADC_Start(&hadc1);
+    if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
+        return HAL_ADC_GetValue(&hadc1);
     }
+    return 0;
+}
+
+uint32_t Light_GetAverage(uint16_t samples) {
+    uint32_t sum = 0;
+    if (samples == 0) {
+        return 0;
+    }
+    for (uint16_t i = 0; i < samples; i++) {
+        sum += Light_GetValue();
+    }
+    return sum / samples;
 }

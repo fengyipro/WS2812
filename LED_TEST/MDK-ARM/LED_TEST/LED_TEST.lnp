@@ -14,6 +14,7 @@
 "led_test\micphone.o"
 "led_test\ws2812.o"
 "led_test\light.o"
+"led_test\bluetooth.o"
 "led_test\stm32f1xx_hal_gpio_ex.o"
 "led_test\stm32f1xx_hal_adc.o"
 "led_test\stm32f1xx_hal_adc_ex.o"

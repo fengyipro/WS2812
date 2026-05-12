@@ -1,7 +1,0 @@
-"..\obj\main.obj",
-"..\obj\LDChip.obj",
-"..\obj\Reg_RW.obj",
-"..\obj\Syn6288.obj",
-"..\obj\usart.obj" 
-TO "..\obj\V07A" 
-PRINT(".\V07A.m51") RAMSIZE(256) 

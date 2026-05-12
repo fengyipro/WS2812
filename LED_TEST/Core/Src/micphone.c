@@ -12,6 +12,12 @@ void Micphone_Init(void) {
  * @brief 获取声音强度 (单次采样)
  */
 uint32_t Micphone_GetValue(void) {
+    ADC_ChannelConfTypeDef sConfig = {0};
+    sConfig.Channel = ADC_CHANNEL_6;
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+
     HAL_ADC_Start(&hadc1);
     if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
         return HAL_ADC_GetValue(&hadc1);
@@ -68,8 +74,7 @@ uint8_t Mic_Calibration_Process(Mic_Calibration_t *cal, uint32_t mic_val) {
         // 计算均值
         uint32_t average = cal->sum / cal->count;
 
-        // 阈值 = 均值 * 1.5 (使用定点数计算，放大10倍后除以10)
-        cal->noise_threshold = (average * 15) / 10;
+        cal->noise_threshold = (average * 12) / 10;
 
         cal->state = MIC_CALIBRATED;
         return 1;

@@ -22,4 +22,9 @@ void Buzzer_Init(void);
  */
 void Buzzer_Beep_Short(void);
 
+/**
+ * @brief 蜂鸣器周期更新（非阻塞短鸣定时）
+ */
+void Buzzer_Update(void);
+
 #endif /* __BUZZER_H */

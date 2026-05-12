@@ -2,10 +2,9 @@
 #define __LIGHT_H
 
 #include "main.h"
+#include "adc.h"
 
-// 光敏电阻模块连接在 PB0 (数字输入)
-#define LIGHT_PORT GPIOB
-#define LIGHT_PIN  GPIO_PIN_0
+#define LIGHT_ADC_CHANNEL ADC_CHANNEL_8
 
 /**
  * @brief 光敏传感器初始化
@@ -13,9 +12,11 @@
 void Light_Init(void);
 
 /**
- * @brief 检测环境是否明亮
- * @return 1:明亮, 0:暗
+ * @brief 获取光照强度ADC原始值
+ * @return 0-4095
  */
-uint8_t Light_IsBright(void);
+uint32_t Light_GetValue(void);
+
+uint32_t Light_GetAverage(uint16_t samples);
 
 #endif /* __LIGHT_H */

@@ -31,6 +31,7 @@
 #include "micphone.h"
 #include "buzzer.h"
 #include "light.h"
+#include "bluetooth.h"
 #include <stdio.h>
 #include <string.h>
 /* USER CODE END Includes */
@@ -66,10 +67,10 @@ volatile MenuState_t current_menu = MENU_HOME;
 volatile uint8_t key1_pressed = 0;
 volatile uint8_t key2_pressed = 0;
 
-uint8_t brightness_level = 2; // 1:Dark, 2:Medium, 3:Bright
+uint8_t brightness_level = 1; // 1:Dark, 2:Medium, 3:Bright
 uint8_t color_index = 0;
 uint8_t home_menu_cursor = 0; // 0:Brightness, 1:Extended, 2:Voice
-uint8_t extended_menu_cursor = 0; // 0:Color, 1:Music, 2:Auto Brightness, 3:Sound Detect
+uint8_t extended_menu_cursor = 0; // 0:Color, 1:Music, 2:Auto Brightness, 3:Exit
 typedef struct {
     RGB_Color_t rgb;
     const char *name;
@@ -101,9 +102,6 @@ uint8_t music_cal_initialized = 0; // 音乐模式校准是否已初始化
 uint8_t voice_rx_byte = 0;
 char voice_cmd_buf[40];
 uint8_t voice_cmd_idx = 0;
-char voice_rx_debug[24] = "";
-uint8_t voice_rx_debug_idx = 0;
-uint8_t voice_rx_debug_updated = 0;
 uint32_t voice_led_last_toggle = 0;
 uint8_t voice_led_blink_state = 0;
 uint32_t voice_led_hold_until = 0;
@@ -118,6 +116,7 @@ void Handle_Keys(void);
 void Music_Rhythm_Update(void);
 void Auto_Brightness_Update(void);
 void Sound_Detect_Update(void);
+void Handle_Bluetooth_Commands(void);
 void Voice_Mode_Update(void);
 void Voice_Process_Command(const char *cmd);
 void Voice_LED_Set(uint8_t on);
@@ -175,6 +174,7 @@ int main(void)
   Micphone_Init();
   Buzzer_Init();
   Light_Init();
+  Bluetooth_Init();
   Voice_LED_Set(0);
   
   UI_Refresh(); // 显示初始界面
@@ -184,7 +184,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    Bluetooth_Update();
+    Handle_Bluetooth_Commands();
     Handle_Keys();
+    Buzzer_Update();
 
     if (current_menu == MENU_MUSIC) {
         Music_Rhythm_Update();
@@ -323,6 +326,8 @@ void Handle_Keys(void) {
                 break;
             case MENU_VOICE:
                 // 语音模式下按键1返回主菜单
+                WS2812_Clear(LED_NUM);
+                brightness_level = 1U;
                 current_menu = MENU_HOME;
                 voice_cmd_idx = 0;
                 voice_led_hold_until = 0;
@@ -341,24 +346,25 @@ void Handle_Keys(void) {
                 // 主界面: K2确认进入
                 if (home_menu_cursor == 0) {
                     current_menu = MENU_BRIGHTNESS;
+                    brightness_level = 1U;
+                    WS2812_Set_All(LED_NUM, 30U, 30U, 30U);
                 } else if (home_menu_cursor == 1) {
-                    current_menu = MENU_EXTENDED;
-                } else {
                     current_menu = MENU_VOICE;
                     voice_cmd_idx = 0;
                     voice_led_hold_until = 0;
                     voice_led_last_toggle = HAL_GetTick();
                     voice_led_blink_state = 1;
                     Voice_LED_Set(1);
+                } else {
+                    current_menu = MENU_EXTENDED;
                 }
                 UI_Refresh();
                 break;
             case MENU_BRIGHTNESS:
-                if (brightness_level > 1) brightness_level--;
-                else brightness_level = 3; // 循环切换
+                WS2812_Clear(LED_NUM);
+                brightness_level = 1U;
+                current_menu = MENU_HOME;
                 UI_Refresh();
-                val = (brightness_level == 1) ? 30 : (brightness_level == 2 ? 120 : 255);
-                WS2812_Set_All(LED_NUM, val, val, val);
                 break;
             case MENU_EXTENDED:
                 // K2 确认进入模式
@@ -374,7 +380,9 @@ void Handle_Keys(void) {
                 } else if (extended_menu_cursor == 2) {
                     current_menu = MENU_AUTO_BRIGHTNESS;
                 } else {
-                    current_menu = MENU_SOUND_DETECT;
+                    WS2812_Clear(LED_NUM);
+                    brightness_level = 1U;
+                    current_menu = MENU_HOME;
                 }
                 UI_Refresh();
                 break;
@@ -396,6 +404,8 @@ void Handle_Keys(void) {
                 UI_Refresh();
                 break;
             case MENU_VOICE:
+                WS2812_Clear(LED_NUM);
+                brightness_level = 1U;
                 current_menu = MENU_HOME;
                 voice_cmd_idx = 0;
                 voice_led_hold_until = 0;
@@ -404,6 +414,158 @@ void Handle_Keys(void) {
                 UI_Refresh();
                 break;
         }
+    }
+}
+
+/**
+ * @brief 处理蓝牙数字命令（0=退出，1..n=当前界面功能号）
+ */
+void Handle_Bluetooth_Commands(void) {
+    uint8_t cmd;
+    uint8_t latest_cmd = 0;
+    uint8_t has_cmd = 0;
+    uint8_t val;
+    char cmd_str[2];
+
+    while (Bluetooth_GetCommand(&cmd)) {
+        latest_cmd = cmd;
+        has_cmd = 1;
+    }
+
+    if (!has_cmd) {
+        return;
+    }
+    cmd = latest_cmd;
+
+    // 0 在任意模式下表示退出当前页面
+    if (cmd == 0U) {
+        switch (current_menu) {
+            case MENU_HOME:
+                break;
+            case MENU_BRIGHTNESS:
+            case MENU_EXTENDED:
+                WS2812_Clear(LED_NUM);
+                brightness_level = 1U;
+                current_menu = MENU_HOME;
+                UI_Refresh();
+                Buzzer_Beep_Short();
+                break;
+            case MENU_COLOR:
+            case MENU_MUSIC:
+            case MENU_AUTO_BRIGHTNESS:
+            case MENU_SOUND_DETECT:
+                if (current_menu == MENU_MUSIC) {
+                    music_cal_initialized = 0;
+                    music_hue = 0;
+                    music_value = 0;
+                }
+                current_menu = MENU_EXTENDED;
+                WS2812_Clear(LED_NUM);
+                UI_Refresh();
+                Buzzer_Beep_Short();
+                break;
+            case MENU_VOICE:
+                WS2812_Clear(LED_NUM);
+                brightness_level = 1U;
+                current_menu = MENU_HOME;
+                voice_cmd_idx = 0;
+                voice_led_hold_until = 0;
+                voice_led_blink_state = 0;
+                Voice_LED_Set(0);
+                UI_Refresh();
+                Buzzer_Beep_Short();
+                break;
+        }
+        return;
+    }
+
+    switch (current_menu) {
+        case MENU_HOME:
+            if (cmd == 1U) {
+                current_menu = MENU_BRIGHTNESS;
+                brightness_level = 1U;
+                val = 30U;
+                WS2812_Set_All(LED_NUM, val, val, val);
+                UI_Refresh();
+                Buzzer_Beep_Short();
+            } else if (cmd == 2U) {
+                current_menu = MENU_VOICE;
+                voice_cmd_idx = 0;
+                voice_led_hold_until = 0;
+                voice_led_last_toggle = HAL_GetTick();
+                voice_led_blink_state = 1;
+                Voice_LED_Set(1);
+                UI_Refresh();
+                Buzzer_Beep_Short();
+            } else if (cmd == 3U) {
+                current_menu = MENU_EXTENDED;
+                UI_Refresh();
+                Buzzer_Beep_Short();
+            }
+            break;
+
+        case MENU_BRIGHTNESS:
+            if (cmd >= 1U && cmd <= 3U) {
+                brightness_level = cmd;
+                UI_Refresh();
+                val = (brightness_level == 1U) ? 30U : (brightness_level == 2U ? 120U : 255U);
+                WS2812_Set_All(LED_NUM, val, val, val);
+                Buzzer_Beep_Short();
+            }
+            break;
+
+        case MENU_EXTENDED:
+            if (cmd == 1U) {
+                current_menu = MENU_COLOR;
+                WS2812_Set_All(LED_NUM,
+                               color_modes[color_index].rgb.R,
+                               color_modes[color_index].rgb.G,
+                               color_modes[color_index].rgb.B);
+                UI_Refresh();
+                Buzzer_Beep_Short();
+            } else if (cmd == 2U) {
+                current_menu = MENU_MUSIC;
+                UI_Refresh();
+                Buzzer_Beep_Short();
+            } else if (cmd == 3U) {
+                current_menu = MENU_AUTO_BRIGHTNESS;
+                UI_Refresh();
+                Buzzer_Beep_Short();
+            } else if (cmd == 4U) {
+                WS2812_Clear(LED_NUM);
+                brightness_level = 1U;
+                current_menu = MENU_HOME;
+                UI_Refresh();
+                Buzzer_Beep_Short();
+            }
+            break;
+
+        case MENU_COLOR:
+            if (cmd >= 1U && cmd <= COLOR_COUNT) {
+                color_index = (uint8_t)(cmd - 1U);
+                WS2812_Set_All(LED_NUM,
+                               color_modes[color_index].rgb.R,
+                               color_modes[color_index].rgb.G,
+                               color_modes[color_index].rgb.B);
+                UI_Refresh();
+                Buzzer_Beep_Short();
+            }
+            break;
+
+        case MENU_VOICE:
+            if (cmd >= 1U && cmd <= 5U) {
+                cmd_str[0] = (char)('0' + cmd);
+                cmd_str[1] = '\0';
+                Voice_Process_Command(cmd_str);
+                Buzzer_Beep_Short();
+            }
+            break;
+
+        case MENU_MUSIC:
+        case MENU_AUTO_BRIGHTNESS:
+        case MENU_SOUND_DETECT:
+            // 这些模式当前仅支持 0 退出
+            break;
     }
 }
 
@@ -424,8 +586,8 @@ void UI_Refresh(void) {
             LCD_ShowString(32, 2, (u8*)"MAIN MENU", WHITE, BLUE, 16, 0);
 
             LCD_ShowString(8, 36, (u8*)"1. Brightness", (home_menu_cursor == 0) ? CYAN : WHITE, BLACK, 16, 0);
-            LCD_ShowString(8, 58, (u8*)"2. Extended", (home_menu_cursor == 1) ? CYAN : WHITE, BLACK, 16, 0);
-            LCD_ShowString(8, 80, (u8*)"3. Voice Ctrl", (home_menu_cursor == 2) ? CYAN : WHITE, BLACK, 16, 0);
+            LCD_ShowString(8, 58, (u8*)"2. Voice Ctrl", (home_menu_cursor == 1) ? CYAN : WHITE, BLACK, 16, 0);
+            LCD_ShowString(8, 80, (u8*)"3. Extended", (home_menu_cursor == 2) ? CYAN : WHITE, BLACK, 16, 0);
 
             LCD_DrawLine(0, 105, 127, 105, GRAY);
             LCD_ShowString(10, 110, (u8*)"K1:Sel  K2:Enter", GRAY, BLACK, 12, 0);
@@ -444,7 +606,7 @@ void UI_Refresh(void) {
             LCD_Fill(20, 77, bar_end, 83, CYAN);
             
             LCD_DrawLine(0, 105, 127, 105, GRAY);
-            LCD_ShowString(10, 110, (u8*)"K1:+  K2:-  K1+K2:Exit", GRAY, BLACK, 12, 0);
+            LCD_ShowString(10, 110, (u8*)"K1:Cycle  K2:Exit", GRAY, BLACK, 12, 0);
             break;
             
         case MENU_EXTENDED:
@@ -453,7 +615,7 @@ void UI_Refresh(void) {
             LCD_ShowString(10, 28, (u8*)"1. Color Mode", (extended_menu_cursor == 0) ? CYAN : WHITE, BLACK, 16, 0);
             LCD_ShowString(10, 48, (u8*)"2. Music Mode", (extended_menu_cursor == 1) ? CYAN : WHITE, BLACK, 16, 0);
             LCD_ShowString(10, 68, (u8*)"3. Auto Bright", (extended_menu_cursor == 2) ? CYAN : WHITE, BLACK, 16, 0);
-            LCD_ShowString(10, 88, (u8*)"4. Sound Detect", (extended_menu_cursor == 3) ? CYAN : WHITE, BLACK, 16, 0);
+            LCD_ShowString(10, 88, (u8*)"4. Exit", (extended_menu_cursor == 3) ? CYAN : WHITE, BLACK, 16, 0);
 
             LCD_DrawLine(0, 108, 127, 108, GRAY);
             LCD_ShowString(10, 112, (u8*)"K1:Sel  K2:Enter", GRAY, BLACK, 12, 0);
@@ -481,7 +643,12 @@ void UI_Refresh(void) {
         case MENU_AUTO_BRIGHTNESS:
             LCD_ShowString(10, 2, (u8*)"AUTO BRIGHTNESS", WHITE, BLUE, 16, 0);
             
-            LCD_ShowString(20, 60, (u8*)"Sensing Light...", CYAN, BLACK, 16, 0);
+            LCD_ShowString(10, 25, (u8*)"Auto dim by light", CYAN, BLACK, 12, 0);
+            LCD_ShowString(10, 40, (u8*)"Light: ----", WHITE, BLACK, 16, 0);
+            LCD_DrawLine(14, 80, 114, 80, GRAY);
+            LCD_DrawLine(14, 90, 114, 90, GRAY);
+            LCD_DrawLine(14, 80, 14, 90, GRAY);
+            LCD_DrawLine(114, 80, 114, 90, GRAY);
             
             LCD_DrawLine(0, 105, 127, 105, GRAY);
             LCD_ShowString(25, 110, (u8*)"K1 / K2: Exit", GRAY, BLACK, 12, 0);
@@ -493,9 +660,8 @@ void UI_Refresh(void) {
             break;
         case MENU_VOICE:
             LCD_ShowString(12, 2, (u8*)"VOICE MODE", WHITE, BLUE, 16, 0);
-            LCD_ShowString(6, 30, (u8*)"Say pinyin cmd:", WHITE, BLACK, 12, 0);
-            LCD_ShowString(6, 46, (u8*)"RX:", CYAN, BLACK, 12, 0);
-            LCD_ShowString(28, 46, (u8*)voice_rx_debug, WHITE, BLACK, 12, 0);
+            LCD_ShowString(6, 30, (u8*)"BT Digit Ctrl On", WHITE, BLACK, 12, 0);
+            LCD_ShowString(6, 46, (u8*)"Cmd:1..5 0:Back", CYAN, BLACK, 12, 0);
             LCD_ShowString(6, 68, (u8*)"Last:", CYAN, BLACK, 12, 0);
             LCD_ShowString(42, 68, (u8*)voice_last_cmd, WHITE, BLACK, 12, 0);
             LCD_DrawLine(0, 105, 127, 105, GRAY);
@@ -509,10 +675,6 @@ void UI_Refresh(void) {
  */
 void Voice_Mode_Update(void) {
     uint32_t now = HAL_GetTick();
-    uint8_t i;
-    char rx_view[16];
-    uint8_t tail_len;
-    uint8_t start_idx;
 
     // 轮询接收LD3320发来的拼音命令文本（\r\n结尾）
     while (HAL_UART_Receive(&huart2, &voice_rx_byte, 1, 0) == HAL_OK) {
@@ -525,58 +687,17 @@ void Voice_Mode_Update(void) {
                 Voice_Process_Command(voice_cmd_buf);
                 voice_cmd_idx = 0;
             }
-            // 显示换行到达，便于确认帧结束
-            if (voice_rx_debug_idx < (sizeof(voice_rx_debug) - 1U)) {
-                voice_rx_debug[voice_rx_debug_idx++] = '|';
-            }
-            voice_rx_debug[voice_rx_debug_idx] = '\0';
-            voice_rx_debug_updated = 1;
             continue;
         }
 
-        if (voice_cmd_idx < (sizeof(voice_cmd_buf) - 1U)) {
-            voice_cmd_buf[voice_cmd_idx++] = (char)voice_rx_byte;
-        } else {
-            voice_cmd_idx = 0;
-        }
-
-        // 原始串口数据显示（仅保留可打印ASCII）
-        if (voice_rx_debug_idx >= (sizeof(voice_rx_debug) - 1U)) {
-            for (i = 1; i < voice_rx_debug_idx; i++) {
-                voice_rx_debug[i - 1] = voice_rx_debug[i];
+        // 仅缓存有效数字字符，避免串口噪声导致屏幕刷屏
+        if (voice_rx_byte >= '1' && voice_rx_byte <= '5') {
+            if (voice_cmd_idx < (sizeof(voice_cmd_buf) - 1U)) {
+                voice_cmd_buf[voice_cmd_idx++] = (char)voice_rx_byte;
+            } else {
+                voice_cmd_idx = 0;
             }
-            voice_rx_debug_idx--;
         }
-        if (voice_rx_byte >= 32U && voice_rx_byte <= 126U) {
-            voice_rx_debug[voice_rx_debug_idx++] = (char)voice_rx_byte;
-        } else {
-            voice_rx_debug[voice_rx_debug_idx++] = '.';
-        }
-        voice_rx_debug[voice_rx_debug_idx] = '\0';
-        voice_rx_debug_updated = 1;
-    }
-
-    if (voice_rx_debug_updated) {
-        voice_rx_debug_updated = 0;
-        tail_len = (uint8_t)strlen(voice_rx_debug);
-        if (tail_len > 14U) {
-            start_idx = (uint8_t)(tail_len - 14U);
-            for (i = 0; i < 14U; i++) {
-                rx_view[i] = voice_rx_debug[start_idx + i];
-            }
-            rx_view[14] = '\0';
-        } else {
-            for (i = 0; i < tail_len; i++) {
-                rx_view[i] = voice_rx_debug[i];
-            }
-            for (; i < 14U; i++) {
-                rx_view[i] = ' ';
-            }
-            rx_view[14] = '\0';
-        }
-
-        LCD_Fill(28, 46, 127, 58, BLACK);
-        LCD_ShowString(28, 46, (u8*)rx_view, WHITE, BLACK, 12, 0);
     }
 
     // LED指示：命令执行后长亮2s，否则闪烁
@@ -662,10 +783,10 @@ void Matrix_Set_Pixel(uint8_t row, uint8_t col, uint8_t r, uint8_t g, uint8_t b)
 }
 
 /**
- * @brief 音乐律动逻辑更新 (8x8矩阵渐变版本)
+ * @brief 音乐律动逻辑更新 (12环渐变版本)
  *
  * 算法说明：
- * 1. 进入音乐模式后，先进行5秒环境噪音采集
+ * 1. 进入音乐模式后，先进行环境噪音采集
  *    - 在LCD上显示采集进度和计算过程
  *    - 采集完成后计算均值，乘以1.5作为噪音阈值
  * 2. 校准完成后，使用阈值判断是否触发音乐律动
@@ -680,13 +801,17 @@ void Music_Rhythm_Update(void) {
     static uint32_t last_sample_time = 0;
     static uint32_t last_lcd_update = 0;
     static uint8_t last_bar_length = 0;
+    static uint32_t baseline = 0;
+    static uint32_t env = 0;
+    static uint32_t noise = 0;
+    static uint32_t peak = 1;
+    static uint8_t last_rows = 0;
     uint32_t now = HAL_GetTick();
 
-    // 每100ms采样一次
-    if (now - last_sample_time < 100) return;
+    if (now - last_sample_time < 30) return;
     last_sample_time = now;
 
-    uint32_t mic_val = Micphone_GetAverage(10);
+    uint32_t mic_val = Micphone_GetAverage(4);
 
     // 初始化校准（只执行一次）
     if (!music_cal_initialized) {
@@ -761,6 +886,11 @@ void Music_Rhythm_Update(void) {
             // 清空进度条区域准备音乐律动显示
             LCD_Fill(15, 96, 113, 104, BLACK);
             last_bar_length = 0;
+            baseline = mic_cal.sum / mic_cal.count;
+            env = 0;
+            noise = 0;
+            peak = 1;
+            last_rows = 0;
         }
 
         return;
@@ -768,55 +898,54 @@ void Music_Rhythm_Update(void) {
 
     // ========== 校准完成后的音乐律动逻辑 ==========
 
-    // 计算与阈值的差值
-    uint8_t intensity = 0;
-    if (mic_val > mic_cal.noise_threshold) {
-        uint32_t diff = mic_val - mic_cal.noise_threshold;
-        // 映射到0-255，假设最大差值为2000
-        intensity = (diff * 255) / 2000;
-        if (intensity > 255) intensity = 255;
+    baseline = (baseline * 252U + mic_val * 4U) / 256U;
+    uint32_t diff = (mic_val > baseline) ? (mic_val - baseline) : (baseline - mic_val);
+
+    if (noise == 0) {
+        noise = diff + 1U;
     }
 
-    // 更新色相：有音乐时缓慢变化色相
-    if (intensity > 10) {
-        // 色相变化速度与强度成正比
-        music_hue += intensity / 16;
-        if (music_hue >= 1536) music_hue -= 1536;
+    uint32_t threshold = noise * 2.8 + 8;
+    if (diff <= threshold) {
+        noise = (noise * 252U + diff * 4U) / 256U;
     }
 
-    // 平滑亮度：使用指数移动平均
-    // 目标亮度：安静时30，最大音量时255
-    uint8_t target_value = 30 + (intensity * 225) / 255;
-    // 平滑系数：new = old * 0.7 + target * 0.3
-    music_value = (music_value * 179 + target_value * 77) / 256;
+    env = (env * 192U + diff * 64U) / 256U;
+    uint32_t signal = (env > threshold) ? (env - threshold) : 0U;
 
-    // 转换为RGB
-    uint8_t r, g, b;
-    HSV_to_RGB(music_hue, music_saturation, music_value, &r, &g, &b);
+    peak = (peak * 252U) / 256U;
+    if (signal > peak) {
+        peak = signal;
+    }
+    if (peak < 8U) {
+        peak = 8U;
+    }
 
-    // 设置整个8x8矩阵为同一颜色
-    for (uint8_t row = 0; row < 8; row++) {
-        for (uint8_t col = 0; col < 8; col++) {
-            Matrix_Set_Pixel(row, col, r, g, b);
+    uint8_t intensity = (uint8_t)((signal * 255U) / peak);
+
+    music_hue = (uint16_t)((music_hue + 2U + (uint16_t)(intensity / 24U)) % 1536U);
+
+    uint8_t target_value = 10U + (uint8_t)((intensity * 245U) / 255U);
+    music_value = (uint8_t)((music_value * 128U + target_value * 128U) / 256U);
+
+    uint8_t r_on, g_on, b_on;
+    HSV_to_RGB(music_hue, music_saturation, music_value, &r_on, &g_on, &b_on);
+
+    WS2812_Set_All(12, r_on, g_on, b_on);
+
+    uint8_t bar_length = (uint8_t)((intensity * 98U) / 255U);
+    if (bar_length > 98U) bar_length = 98U;
+
+    if (current_menu == MENU_MUSIC) {
+        if (bar_length != last_bar_length) {
+            if (bar_length > last_bar_length) {
+                LCD_Fill(15 + last_bar_length, 96, 15 + bar_length - 1, 104, CYAN);
+            } else {
+                LCD_Fill(15 + bar_length, 96, 15 + last_bar_length - 1, 104, BLACK);
+            }
+            last_bar_length = bar_length;
         }
-    }
-    WS2812_Show(LED_NUM);
-
-    // 计算进度条长度 (最大长度 98)
-    uint8_t bar_length = 0;
-    if (intensity > 0) {
-        bar_length = (intensity * 98) / 255;
-        if (bar_length > 98) bar_length = 98;
-    }
-
-    // 更新LCD进度条显示 (15 到 113, y: 96 到 104)
-    if (current_menu == MENU_MUSIC && bar_length != last_bar_length) {
-        if (bar_length > last_bar_length) {
-            LCD_Fill(15 + last_bar_length, 96, 15 + bar_length - 1, 104, CYAN);
-        } else {
-            LCD_Fill(15 + bar_length, 96, 15 + last_bar_length - 1, 104, BLACK);
-        }
-        last_bar_length = bar_length;
+        last_rows = 0;
     }
 }
 
@@ -825,15 +954,67 @@ void Music_Rhythm_Update(void) {
  */
 void Auto_Brightness_Update(void) {
     static uint32_t last_check_time = 0;
+    static uint32_t last_lcd_time = 0;
+    static uint8_t last_bar = 255;
+    static uint8_t last_led_val = 0xFF;
+    static uint32_t light_min = 0;
+    static uint32_t light_max = 0;
+    static uint32_t light_smooth = 0;
+    static uint8_t light_init = 0;
     uint32_t now = HAL_GetTick();
     
-    if (now - last_check_time < 500) return; // 500ms检查一次
+    if (now - last_check_time < 100) return;
     last_check_time = now;
-    
-    if (Light_IsBright()) {
-        WS2812_Set_All(LED_NUM, 255, 255, 255); // 明亮环境：高亮度
+
+    uint32_t light_adc = Light_GetAverage(8);
+    if (light_adc > 4095U) light_adc = 4095U;
+
+    if (!light_init) {
+        light_init = 1;
+        light_smooth = light_adc;
+        light_min = light_adc;
+        light_max = light_adc;
     } else {
-        WS2812_Set_All(LED_NUM, 30, 30, 30);    // 昏暗环境：低亮度
+        light_smooth = (light_smooth * 220U + light_adc * 36U) / 256U;
+        if (light_smooth < light_min) light_min = light_smooth;
+        if (light_smooth > light_max) light_max = light_smooth;
+    }
+
+    uint32_t range = (light_max > light_min) ? (light_max - light_min) : 1U;
+    uint8_t light_bar = (uint8_t)(((light_max - light_smooth) * 98U) / range);
+    uint8_t led_val = (uint8_t)(10U + ((light_smooth - light_min) * 245U) / range);
+    if (led_val < 10U) led_val = 10U;
+
+    if (led_val != last_led_val) {
+        last_led_val = led_val;
+        WS2812_Set_All(LED_NUM, led_val, led_val, led_val);
+    }
+
+    if (current_menu != MENU_AUTO_BRIGHTNESS) {
+        return;
+    }
+
+    if (now - last_lcd_time < 200U) {
+        return;
+    }
+    last_lcd_time = now;
+
+    char buf[24];
+    sprintf(buf, "Light: %lu   ", light_smooth);
+    LCD_ShowString(10, 40, (u8*)buf, WHITE, BLACK, 16, 0);
+
+    LCD_DrawLine(14, 80, 114, 80, GRAY);
+    LCD_DrawLine(14, 90, 114, 90, GRAY);
+    LCD_DrawLine(14, 80, 14, 90, GRAY);
+    LCD_DrawLine(114, 80, 114, 90, GRAY);
+
+    if (light_bar != last_bar) {
+        if (light_bar > last_bar) {
+            LCD_Fill(15 + last_bar, 81, 15 + light_bar, 89, CYAN);
+        } else {
+            LCD_Fill(15 + light_bar, 81, 113, 89, BLACK);
+        }
+        last_bar = light_bar;
     }
 }
 

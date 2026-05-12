@@ -560,6 +560,11 @@
               <FileType>1</FileType>
               <FilePath>../Core/Src/light.c</FilePath>
             </File>
+            <File>
+              <FileName>bluetooth.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/bluetooth.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
